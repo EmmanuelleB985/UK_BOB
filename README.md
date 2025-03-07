@@ -1,4 +1,4 @@
-# UKBOB: One Billion MRI Labels is All You Need for 3D Medical Image Segmentation
+# UKBOB: One Billion MRI Masks for Generalizable 3D Medical Image Segmentation
 
 Welcome to our UKBOB repository. Please see below installation of dependencies and datasets. 
 We provide training and inference code for reproducibility. 
