@@ -10,10 +10,6 @@ conda env create -f environment.yml
 conda activate swin_bob
 ```
 
-# Pre-trained Models
-
-We will provide pre-trained weights for Swin-UNETR backbone trained on more than 50k 3D MRI with filtered labels from the UK Biobank. 
-
 # Datasets and Preprocessing 
 
 We use the initial segmentation labels from [2] that we filter with our custom _Specialized Organ Label Filter (SOLF)_.
@@ -24,6 +20,13 @@ python filtering/organ_filtering.py
 
 For out-of-domain evaluation, we use the **BTCV** and **BRATS23** datasets where we preserve the train-val-test splits. 
 Please download these public datasets and associated json files for [BRATS](https://www.synapse.org/Synapse:syn51156910/wiki/627000) and [BTCV](https://www.synapse.org/Synapse:syn3193805/wiki/217789).
+
+
+# Pre-trained Models
+
+We will provide pre-trained weights for Swin-UNETR backbone trained on more than 50k 3D MRI with filtered labels from the UK Biobank. 
+In the meantime, we provide weights for our segmentation model with ETTA on **BTCV** [here]() and **BRATS** [here]().
+Please download the weights and follow the instructions below to run inference and visualise the outputs.
 
 
 # Training
