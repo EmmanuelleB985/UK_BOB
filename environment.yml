@@ -220,7 +220,6 @@ dependencies:
   - zstd=1.5.2=h6239696_4
   - pip:
     - einops==0.5.0
-    - monai-weekly==1.1.dev2244
     - nibabel==4.0.2
     - nvidia-cublas-cu11==11.10.3.66
     - nvidia-cuda-nvrtc-cu11==11.7.99
@@ -228,4 +227,4 @@ dependencies:
     - nvidia-cudnn-cu11==8.5.0.96
     - torch==1.13.0
     - tqdm==4.64.1
-prefix: home/miniconda3/envs/swin_bob
+    - git+https://github.com/Project-MONAI/MONAI.git@07de215c
