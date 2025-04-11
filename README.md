@@ -73,7 +73,7 @@ MIT License.
 
 
 # Citations
-This work is based on Swin-UNetr, TotalVibeSegmentator and InTEnt. We thank the authors of these works, please consider citing them:
+This work is based on Swin-UNetr, TotalVibeSegmentator, InTEnt and MONAI. We thank the authors of these works, please consider citing them:
 
 ```
 
