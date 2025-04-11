@@ -25,7 +25,7 @@ Please download these public datasets and associated json files for [BRATS](http
 # Pre-trained Models
 
 We will provide pre-trained weights for Swin-UNETR backbone trained on more than 50k 3D MRI with filtered labels from the UK Biobank. 
-In the meantime, we provide weights for our segmentation model with ETTA on **BTCV** [here]() and **BRATS** [here](https://drive.google.com/file/d/1CRhw61DgKRD22TFuT4Aqu_Urq2F1Zdmh/view?usp=sharing).
+In the meantime, we provide weights for our segmentation model with ETTA on **BTCV** [here](https://drive.google.com/file/d/1mTuJ80UknqP-y3E3n5mcXUWj5Imx3Q2r/view?usp=sharing) and **BRATS** [here](https://drive.google.com/file/d/1CRhw61DgKRD22TFuT4Aqu_Urq2F1Zdmh/view?usp=sharing).
 Please download the weights and follow the instructions below to run inference and visualise the outputs.
 
 
