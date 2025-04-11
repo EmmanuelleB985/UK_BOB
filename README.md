@@ -53,6 +53,8 @@ python main.py --json_list='./dataset.json' --data_dir='./UKBOB/' --val_every=5 
 
 ```
 
+# Inference
+
 To evaluate `Swin-BoB` with ETTA on **BTCV**:
 
 ```bash
