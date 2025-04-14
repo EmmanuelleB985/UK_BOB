@@ -26,14 +26,14 @@ UKBOB is a large-scale 3D MRI dataset with 51,761 samples, over 1.37 billion seg
 ```
 
 
-# Installing Dependencies
+## Installing Dependencies
 Create the conda environment and activate it.
 ```
 conda env create -f environment.yml
 conda activate swin_bob
 ```
 
-# Datasets and Preprocessing 
+## Datasets and Preprocessing 
 
 We use the initial segmentation labels from [2] that we filter with our custom _Specialized Organ Label Filter (SOLF)_.
 
@@ -45,14 +45,14 @@ For out-of-domain evaluation, we use the **BTCV** and **BRATS23** datasets where
 Please download these public datasets and associated json files for [BRATS](https://www.synapse.org/Synapse:syn51156910/wiki/627000) and [BTCV](https://www.synapse.org/Synapse:syn3193805/wiki/217789).
 
 
-# Pre-trained Models
+## Pre-trained Models
 
 We will provide pre-trained weights for Swin-UNETR backbone trained on more than 50k 3D MRI with filtered labels from the UK Biobank. 
 In the meantime, we provide weights for our segmentation model with ETTA on **BTCV** [here](https://drive.google.com/file/d/1mTuJ80UknqP-y3E3n5mcXUWj5Imx3Q2r/view?usp=sharing) and **BRATS** [here](https://drive.google.com/file/d/1CRhw61DgKRD22TFuT4Aqu_Urq2F1Zdmh/view?usp=sharing).
 Please download the weights and follow the instructions below to run inference and visualise the outputs.
 
 
-# Training
+## Training
 
 To train a `Swin-BoB` with a single gpu:
 
@@ -76,7 +76,7 @@ python main.py --json_list='./dataset.json' --data_dir='./UKBOB/' --val_every=5 
 
 ```
 
-# Inference
+## Inference
 
 To evaluate `Swin-BoB` with ETTA on **BTCV**:
 
@@ -95,7 +95,7 @@ python test_etta.py --json_list='./data/BTCV/dataset_0.json' --data_dir='./data/
 MIT License.
 
 
-# Citations
+## Citations
 This work is based on Swin-UNetr, TotalVibeSegmentator, InTEnt and MONAI. We thank the authors of these works, please consider citing them:
 
 ```
@@ -132,5 +132,12 @@ This work is based on Swin-UNetr, TotalVibeSegmentator, InTEnt and MONAI. We tha
 }
 ```
 
+## References
+
+[1]: Hatamizadeh, A., Nath, V., Tang, Y., Yang, D., Roth, H. and Xu, D., (2022). Swin UNETR: Swin Transformers for Semantic Segmentation of Brain Tumors in MRI Images. arXiv preprint arXiv:2201.01266.
+
+[2]: Graf, R., Platzek, P., Riedel, E.O., Ramschutz, C., Starck, S., Moller, H.K., Atad, M., Vőlzke, H., Bulow, R., Schmidt, C.O., Rudebusch, J., Jung, M., Reisert, M., Weiss, J., Loffler, M., Bamberg, F., Wiestler, B., Paetzold, J.C., Rueckert, D., & Kirschke, J.S. (2024). TotalVibeSegmentator: Full Body MRI Segmentation for the NAKO and UK Biobank.
+
+[3]: Dong, H., Konz, N., Gu, H., & Mazurowski, M.A. (2024). Medical Image Segmentation with InTEnt: Integrated Entropy Weighting for Single Image Test-Time Adaptation. 2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW), 5046-5055.
 
 [4] Cardoso, M.J., Li, W., Brown, R., Ma, N., Kerfoot, E., Wang, Y., Murrey, B., Myronenko, A., Zhao, C., Yang, D., Nath, V., He, Y., Xu, Z., Hatamizadeh, A., Zhu, W., Liu, Y., Zheng, M., Tang, Y., Yang, I., Zephyr, M., Hashemian, B., Alle, S., Darestani, M.Z., Budd, C., Modat, M., Vercauteren, T.K., Wang, G., Li, Y., Hu, Y., Fu, Y., Gorman, B.L., Johnson, H.J., Genereaux, B.W., Erdal, B.S., Gupta, V., Diaz-Pinto, A., Dourson, A., Maier-Hein, L., Jaeger, P.F., Baumgartner, M., Kalpathy-Cramer, J., Flores, M.G., Kirby, J.S., Cooper, L.A., Roth, H.R., Xu, D., Bericat, D., Floca, R.O., Zhou, S.K., Shuaib, H., Farahani, K., Maier-Hein, K.H., Aylward, S., Dogra, P., Ourselin, S., & Feng, A. (2022). MONAI: An open-source framework for deep learning in healthcare. ArXiv, abs/2211.02701.
