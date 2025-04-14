@@ -8,7 +8,7 @@
 <br>
 
 <div align="center">
-  <img src="assets/UKBOB.png" width="350" alt="Abstract Image">   <img src="assets/datasets.png" width="350" alt="Abstract Image">
+  <img src="assets/UKBOB.png" width="350" alt="Abstract Image">   <img src="assets/datasets.png" width="450" alt="Abstract Image">
 
 </div>
 
