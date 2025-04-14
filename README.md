@@ -3,6 +3,20 @@
 Welcome to our UKBOB repository. Please see below installation of dependencies and datasets. 
 We provide training and inference code for reproducibility. 
 
+## BibTeX
+```bibtex
+@misc{bourigault2025ukbobbillionmrilabeled,
+      title={UKBOB: One Billion MRI Labeled Masks for Generalizable 3D Medical Image Segmentation}, 
+      author={Emmanuelle Bourigault and Amir Jamaludin and Abdullah Hamdi},
+      year={2025},
+      eprint={2504.06908},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2504.06908}, 
+}
+```
+
+
 # Installing Dependencies
 Create the conda environment and activate it.
 ```
