@@ -8,7 +8,10 @@
 <br>
 
 <div align="center">
-  <img src="UKBOB.png" width="350" height="400" alt="Abstract Image">
+  <img src="assets/UKBOB.png" width="350" alt="Abstract Image">
+</div>
+<div align="center">
+  <img src="assets/datasets.png" width="350" alt="Abstract Image">
 </div>
 
 This repo contains the official implementation for the paper "UKBOB: One Billion MRI Masks for Generalizable 3D Medical Image Segmentation". 
