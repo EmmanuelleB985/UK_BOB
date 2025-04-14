@@ -12,7 +12,7 @@
 
 </div>
 
-UKBOB is a large-scale 3D MRI dataset with 51,761 samples, over 1.37 billion segmentation masks, and 72 organs, created using automated labeling and refined through a novel cleaning pipeline validated by manual annotations. Our foundation model, Swin-BOB, based on Swin-UNetr, achieves state-of-the-art performance on benchmarks including BRATS and BTCV.
+UKBOB is a large-scale 3D MRI dataset with 51,761 samples, over 1.37 billion segmentation masks, and 72 organs, created using automated labeling and refined through a novel cleaning pipeline validated by manual annotations. Our foundation model, Swin-BOB, based on Swin-UNetr trained on UKBOB, achieves state-of-the-art performance on benchmarks including BRATS and BTCV.
 
 
 ## BibTeX
