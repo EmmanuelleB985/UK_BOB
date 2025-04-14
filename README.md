@@ -1,7 +1,16 @@
-# UKBOB: One Billion MRI Masks for Generalizable 3D Medical Image Segmentation
+<h1 align="center">UKBOB: One Billion MRI Masks for Generalizable 3D Medical Image Segmentation</h1>
 
-Welcome to our UKBOB repository. Please see below installation of dependencies and datasets. 
-We provide training and inference code for reproducibility. 
+<div align="center">
+  <a href="https://emmanuelleb985.github.io/ukbob/">Project page</a> &nbsp;|&nbsp;
+  <a href="https://arxiv.org/abs/2504.06908">Arxiv</a> &nbsp;|&nbsp;
+  <a href="https://youtu.be/pxhqze2Gv5U">Youtube</a>
+</div>
+<br>
+
+
+This repo contains the official implementation for the paper "UKBOB: One Billion MRI Masks for Generalizable 3D Medical Image Segmentation". 
+UKBOB is a large-scale 3D MRI dataset with 51,761 samples, over 1.37 billion segmentation masks, and 72 organs, created using automated labeling and refined through a novel cleaning pipeline validated by manual annotations. Our foundation model, Swin-BOB, based on Swin-UNetr, achieves state-of-the-art performance on benchmarks including BRATS and BTCV.
+
 
 ## BibTeX
 ```bibtex
