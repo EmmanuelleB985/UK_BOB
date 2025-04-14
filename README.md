@@ -39,12 +39,6 @@ conda activate swin_bob
 
 ## Datasets and Preprocessing 
 
-We use the initial segmentation labels from [2] that we filter with our custom _Specialized Organ Label Filter (SOLF)_.
-
-```bash
-python UKBOB/filtering/organ_filtering.py
-```
-
 For out-of-domain evaluation, we use the **BTCV** and **BRATS23** datasets where we preserve the train-val-test splits. 
 Please download these public datasets and associated json files for [BRATS](https://www.synapse.org/Synapse:syn51156910/wiki/627000) and [BTCV](https://www.synapse.org/Synapse:syn3193805/wiki/217789).
 
@@ -55,8 +49,29 @@ We will provide pre-trained weights for Swin-UNETR backbone trained on more than
 In the meantime, we provide weights for our segmentation model with ETTA on **BTCV** [here](https://drive.google.com/file/d/1mTuJ80UknqP-y3E3n5mcXUWj5Imx3Q2r/view?usp=sharing) and **BRATS** [here](https://drive.google.com/file/d/1CRhw61DgKRD22TFuT4Aqu_Urq2F1Zdmh/view?usp=sharing).
 Please download the weights and follow the instructions below to run inference and visualise the outputs.
 
+## Inference
+
+To evaluate `Swin-BoB` with ETTA on **BTCV**:
+
+```bash
+cd BTCV
+
+```
+
+```bash
+python test_etta.py --json_list='./data/BTCV/dataset_0.json' --data_dir='./data/BTCV/' --feature_size=48 --infer_overlap=0.5 --pretrained_model_name=model_final.pt  --generate_gifs --gif_frames 120 --gif_downsample 2  --gif_duration 0.7
+
+```
+![](BTCV/outputs/gifs/img0039.nii_comparison.gif)
+
 
 ## Training
+
+We use the initial segmentation labels from [2] that we filter with our custom _Specialized Organ Label Filter (SOLF)_.
+
+```bash
+python UKBOB/filtering/organ_filtering.py
+```
 
 To train a `Swin-BoB` with a single gpu:
 
@@ -79,21 +94,6 @@ cd UKBOB
 python main.py --json_list='./dataset.json' --data_dir='./UKBOB/' --val_every=5 --use_checkpoint --roi_x=96 --roi_y=96 --roi_z=96 --in_channels=4 --spatial_dims=3 --feature_size=48 --save_checkpoint --batch_size=1 --distributed 
 
 ```
-
-## Inference
-
-To evaluate `Swin-BoB` with ETTA on **BTCV**:
-
-```bash
-cd BTCV
-
-```
-
-```bash
-python test_etta.py --json_list='./data/BTCV/dataset_0.json' --data_dir='./data/BTCV/' --feature_size=48 --infer_overlap=0.5 --pretrained_model_name=model_final.pt  --generate_gifs --gif_frames 120 --gif_downsample 2  --gif_duration 0.7
-
-```
-![](BTCV/outputs/gifs/img0039.nii_comparison.gif)
 
 # License
 MIT License.
