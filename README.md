@@ -67,7 +67,7 @@ python test_etta.py --json_list='./data/BTCV/dataset_0.json' --data_dir='./data/
 
 ## Training
 
-We use the initial segmentation labels from [2] that we filter with our custom _Specialized Organ Label Filter (SOLF)_.
+To train on UKBOB, you need to have access to the data from [here](https://community.ukbiobank.ac.uk/hc/en-gb). We use the initial segmentation labels from [2] that we filter with our custom _Specialized Organ Label Filter (SOLF)_.
 
 ```bash
 python UKBOB/filtering/organ_filtering.py
