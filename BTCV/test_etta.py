@@ -8,7 +8,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import argparse
 import os
 import nibabel as nib
@@ -24,28 +23,76 @@ from monai.networks.nets import SwinUNETR
 import SimpleITK as sitk
 import torch.nn.functional as F
 
-class EntropyAdaptiveBatchNorm(nn.Module):
-    def __init__(self, num_features, eps=1e-5, momentum=0.1, tune_affine=True):
+class EntropyAdaptiveLayerNorm(nn.Module):
+    def __init__(self, normalized_shape, eps=1e-5, elementwise_affine=True, tune_affine=True):
         super().__init__()
-        self.bn = nn.BatchNorm3d(num_features, eps=eps, momentum=momentum)
+        self.ln = nn.LayerNorm(normalized_shape, eps=eps, elementwise_affine=elementwise_affine)
         self.tune_affine = tune_affine
         
-        if tune_affine:
+        if tune_affine and elementwise_affine:
+            self.weight = nn.Parameter(torch.ones(normalized_shape))
+            self.bias = nn.Parameter(torch.zeros(normalized_shape))
+            with torch.no_grad():
+                self.weight.copy_(self.ln.weight)
+                self.bias.copy_(self.ln.bias)
+    
+    def forward(self, x):
+        if self.training and self.tune_affine:
+            dims = tuple(range(-len(self.ln.normalized_shape), 0))
+            mean = x.mean(dims, keepdim=True)
+            var = x.var(dims, keepdim=True, unbiased=False)
+            x_norm = (x - mean) / torch.sqrt(var + self.ln.eps)
+            return self.weight * x_norm + self.bias
+        else:
+            return self.ln(x)
+
+class EntropyAdaptiveInstanceNorm3d(nn.Module):
+    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True, tune_affine=True):
+        super().__init__()
+        self.inst_norm = nn.InstanceNorm3d(num_features, eps=eps, momentum=momentum, affine=affine)
+        self.tune_affine = tune_affine
+        
+        if tune_affine and affine:
             self.weight = nn.Parameter(torch.ones(num_features))
             self.bias = nn.Parameter(torch.zeros(num_features))
             with torch.no_grad():
-                self.weight.copy_(self.bn.weight)
-                self.bias.copy_(self.bn.bias)
-
+                self.weight.copy_(self.inst_norm.weight)
+                self.bias.copy_(self.inst_norm.bias)
+    
     def forward(self, x):
         if self.training and self.tune_affine:
-            batch_mean = x.mean([0, 2, 3, 4])
-            batch_var = x.var([0, 2, 3, 4], unbiased=False)
-            x_norm = (x - batch_mean[None, :, None, None, None]) / torch.sqrt(batch_var[None, :, None, None, None] + self.bn.eps)
+            mean = x.mean([2, 3, 4], keepdim=True)
+            var = x.var([2, 3, 4], keepdim=True, unbiased=False)
+            x_norm = (x - mean) / torch.sqrt(var + self.inst_norm.eps)
             return self.weight[None, :, None, None, None] * x_norm + self.bias[None, :, None, None, None]
         else:
-            return self.bn(x)
+            return self.inst_norm(x)
 
+class EntropyAdaptiveGroupNorm(nn.Module):
+    def __init__(self, num_groups, num_channels, eps=1e-5, affine=True, tune_affine=True):
+        super().__init__()
+        self.group_norm = nn.GroupNorm(num_groups, num_channels, eps=eps, affine=affine)
+        self.tune_affine = tune_affine
+        
+        if tune_affine and affine:
+            self.weight = nn.Parameter(torch.ones(num_channels))
+            self.bias = nn.Parameter(torch.zeros(num_channels))
+            with torch.no_grad():
+                self.weight.copy_(self.group_norm.weight)
+                self.bias.copy_(self.group_norm.bias)
+    
+    def forward(self, x):
+        if self.training and self.tune_affine:
+            N, C, D, H, W = x.shape
+            G = self.group_norm.num_groups
+            x_reshaped = x.view(N, G, C // G, D, H, W)
+            mean = x_reshaped.mean([2, 3, 4, 5], keepdim=True)
+            var = x_reshaped.var([2, 3, 4, 5], keepdim=True, unbiased=False)
+            x_norm = (x_reshaped - mean) / torch.sqrt(var + self.group_norm.eps)
+            x_norm = x_norm.view(N, C, D, H, W)
+            return self.weight[None, :, None, None, None] * x_norm + self.bias[None, :, None, None, None]
+        else:
+            return self.group_norm(x)
 
 class SwinUNETRWithTTA(nn.Module):
     def __init__(self, original_model, num_tta_passes=3, lr=0.01):
@@ -54,32 +101,53 @@ class SwinUNETRWithTTA(nn.Module):
         self.num_tta_passes = num_tta_passes
         self.lr = lr
         
-        self._replace_bn_layers()
+        self._replace_norm_layers()
         self.affine_params = []
         for m in self.model.modules():
-            if isinstance(m, EntropyAdaptiveBatchNorm) and m.tune_affine:
-                self.affine_params.append({'params': [m.weight, m.bias]})
+            if isinstance(m, (EntropyAdaptiveLayerNorm, EntropyAdaptiveInstanceNorm3d, EntropyAdaptiveGroupNorm)):
+                if hasattr(m, 'weight') and hasattr(m, 'bias') and m.tune_affine:
+                    self.affine_params.append({'params': [m.weight, m.bias]})
         
         if self.affine_params:
             self.tta_optimizer = torch.optim.SGD(self.affine_params, lr=lr)
         else:
             self.tta_optimizer = None
-
-    def _replace_bn_layers(self):
+    
+    def _replace_norm_layers(self):
+        """Replace normalization layers with entropy-adaptive versions"""
         def replace_module(module):
             for name, child in module.named_children():
-                if isinstance(child, nn.BatchNorm3d):
-                    new_bn = EntropyAdaptiveBatchNorm(
+                if isinstance(child, nn.LayerNorm):
+                    new_norm = EntropyAdaptiveLayerNorm(
+                        normalized_shape=child.normalized_shape,
+                        eps=child.eps,
+                        elementwise_affine=child.elementwise_affine,
+                        tune_affine=True
+                    )
+                    setattr(module, name, new_norm)
+                elif isinstance(child, nn.InstanceNorm3d):
+                    new_norm = EntropyAdaptiveInstanceNorm3d(
                         num_features=child.num_features,
                         eps=child.eps,
                         momentum=child.momentum,
+                        affine=child.affine,
                         tune_affine=True
                     )
-                    setattr(module, name, new_bn)
+                    setattr(module, name, new_norm)
+                elif isinstance(child, nn.GroupNorm):
+                    new_norm = EntropyAdaptiveGroupNorm(
+                        num_groups=child.num_groups,
+                        num_channels=child.num_channels,
+                        eps=child.eps,
+                        affine=child.affine,
+                        tune_affine=True
+                    )
+                    setattr(module, name, new_norm)
                 elif len(list(child.children())) > 0:
                     replace_module(child)
+        
         replace_module(self.model)
-
+    
     def forward(self, x):
         return self.model(x)
 
@@ -142,12 +210,11 @@ def postprocess_segmentation(segmentation):
         # Select largest component
         largest_region = max(regions, key=lambda x: x.area)
         cleaned[labeled == largest_region.label] = class_id
-
     return cleaned
 
 def create_comparison_gif(scan, pred, gt, output_path, num_frames=100, 
                          downsample=2, duration=0.5):
-    """Create annotated comparison GIF with slow animation"""
+    """Create annotated comparison GIF with animation"""
     try:
         # Validate dimensions
         assert scan.shape == pred.shape == gt.shape, f"Dimension mismatch: Scan{scan.shape} Pred{pred.shape} GT{gt.shape}"
@@ -156,7 +223,6 @@ def create_comparison_gif(scan, pred, gt, output_path, num_frames=100,
         scan = exposure.rescale_intensity(scan, in_range=(np.percentile(scan, 1), np.percentile(scan, 99)))
         scan = (scan * 255).astype(np.uint8)
         
-        # Generate safe indices
         z_size = scan.shape[-1]
         z_indices = np.clip(np.linspace(0, z_size-1, num_frames).astype(int), 0, z_size-1)
         
@@ -165,8 +231,7 @@ def create_comparison_gif(scan, pred, gt, output_path, num_frames=100,
             scan = scan[::downsample, ::downsample, :]
             pred = pred[::downsample, ::downsample, :]
             gt = gt[::downsample, ::downsample, :]
-
-        # Configure plot style
+        
         plt.style.use('dark_background')
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7))
         fig.subplots_adjust(wspace=0.01)
@@ -176,7 +241,6 @@ def create_comparison_gif(scan, pred, gt, output_path, num_frames=100,
             'color': 'white',
             'bbox': dict(facecolor='black', alpha=0.5, edgecolor='none')
         }
-
         frames = []
         for z in z_indices:
             ax1.clear()
@@ -195,29 +259,24 @@ def create_comparison_gif(scan, pred, gt, output_path, num_frames=100,
                 gt_mask = np.ma.masked_where(np.rot90(gt[:, :, z] == 0, k=1), np.rot90(gt[:, :, z], k=1))
                 ax2.imshow(gt_mask, cmap=cmap, alpha=0.4, vmin=0, vmax=13)
                 ax2.text(0.05, 0.95, 'Ground Truth', transform=ax2.transAxes, **annotation_params)
-
                 # Slice number
                 fig.suptitle(f'Slice {z+1}/{z_size}', y=0.98, **annotation_params)
-
             except IndexError:
                 continue
-
             # Remove axes
             for ax in [ax1, ax2]:
                 ax.set_xticks([])
                 ax.set_yticks([])
                 for spine in ax.spines.values():
                     spine.set_visible(False)
-
             # Convert to numpy array
             fig.canvas.draw()
             img = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
             img = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
             frames.append(img)
-
         plt.close(fig)
         
-        # Save with slower speed
+        # Save here
         if frames:
             imageio.mimsave(
                 output_path,
@@ -288,7 +347,7 @@ def main():
     # Load weights
     model.load_state_dict(torch.load(os.path.join(args.pretrained_dir, args.pretrained_model_name))["state_dict"])
     tta_model = SwinUNETRWithTTA(model).to(device)
-
+    
     with torch.no_grad():
         dice_list_case = []
         for batch in val_loader:
@@ -306,7 +365,7 @@ def main():
             # TTA optimization
             if tta_model.tta_optimizer:
                 tta_model.train()
-                for _ in range(tta_model.num_tta_passes):
+                for tta_step in range(tta_model.num_tta_passes):
                     tta_model.tta_optimizer.zero_grad()
                     outputs = sliding_window_inference(
                         val_inputs, (args.roi_x, args.roi_y, args.roi_z), 4, tta_model,
@@ -363,9 +422,9 @@ def main():
             # Calculate Dice
             dice_scores = [dice(val_outputs == i, val_labels == i) for i in range(1, 14)]
             mean_dice = np.mean(dice_scores)
-            dice_list_case.append(mean_dice)
+            dice_list_case.appenpd(mean_dice)
             print(f"{img_name} Mean Dice: {mean_dice:.4f}")
-
+        
         print(f"\nOverall Mean Dice: {np.mean(dice_list_case):.4f}")
 
 if __name__ == "__main__":
