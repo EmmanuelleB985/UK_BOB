@@ -1,4 +1,4 @@
-<h1 align="center">UKBOB: One Billion MRI Masks for Generalizable 3D Medical Image Segmentation</h1>
+<h1 align="center">UKBOB: One Billion MRI Masks for Generalizable 3D Medical Image Segmentation [ICCV 2025]</h1>
 
 <div align="center">
   <a href="https://emmanuelleb985.github.io/ukbob/">Project page</a> &nbsp;|&nbsp;
