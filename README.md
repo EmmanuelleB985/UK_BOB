@@ -17,14 +17,13 @@ UKBOB is a large-scale 3D MRI dataset with 51,761 samples, over 1.37 billion seg
 
 ## BibTeX
 ```bibtex
-@misc{bourigault2025ukbobbillionmrilabeled,
-      title={UKBOB: One Billion MRI Labeled Masks for Generalizable 3D Medical Image Segmentation}, 
-      author={Emmanuelle Bourigault and Amir Jamaludin and Abdullah Hamdi},
-      year={2025},
-      eprint={2504.06908},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2504.06908}, 
+@InProceedings{Bourigault_2025_ICCV,
+    author    = {Bourigault, Emmanuelle and Jamaludin, Amir and Hamdi, Abdullah},
+    title     = {UKBOB: One Billion MRI Labeled Masks for Generalizable 3D Medical Image Segmentation},
+    booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+    month     = {October},
+    year      = {2025},
+    pages     = {21600-21611}
 }
 ```
 
