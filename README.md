@@ -4,6 +4,9 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![MONAI](https://img.shields.io/badge/MONAI-1.3+-blue.svg)](https://monai.io/)
+[![CI](https://github.com/EmmanuelleB985/UK_BOB/actions/workflows/ci.yml/badge.svg)](https://github.com/EmmanuelleB985/UK_BOB/actions/workflows/ci.yml)
+
+**[Project Page](https://emmanuelleb985.github.io/ukbob/) | [Paper](https://openaccess.thecvf.com/content/ICCV2025/html/Bourigault_UKBOB_One_Billion_MRI_Labeled_Masks_for_Generalizable_3D_Medical_ICCV_2025_paper.html)**
 
 <div align="center">
   <img src="assets/UKBOB.png" width="350" alt="UKBOB Overview">   <img src="assets/datasets.png" width="450" alt="Dataset Statistics">
