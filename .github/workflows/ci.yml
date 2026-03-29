@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install linting tools
+        run: pip install flake8 black isort
+
+      - name: Check formatting with black
+        run: black --check --diff .
+
+      - name: Check import order with isort
+        run: isort --check-only --diff --profile black .
+
+      - name: Lint with flake8
+        run: flake8 .
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install core dependencies
+        run: |
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install monai nibabel numpy scipy
+
+      - name: Validate imports
+        run: |
+          python -c "import torch; print(f'PyTorch {torch.__version__}')"
+          python -c "import monai; print(f'MONAI {monai.__version__}')"

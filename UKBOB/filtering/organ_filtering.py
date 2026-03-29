@@ -14,22 +14,21 @@ Author: Emmanuelle Bourigault
 License: MIT
 """
 
-import os
 import glob
 import json
-from typing import Dict, List, Tuple, Optional, Union
+import os
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
-import warnings
+from typing import Dict, List, Optional, Tuple, Union
 
-import numpy as np
 import nibabel as nib
+import numpy as np
 import pandas as pd
+import SimpleITK as sitk
 from scipy import ndimage
 from scipy.spatial.distance import cdist
 from skimage import measure, morphology
-import SimpleITK as sitk
-
 
 # Comprehensive organ taxonomy with 72 anatomical structures
 ORGAN_TAXONOMY = {
@@ -115,7 +114,7 @@ ORGAN_TAXONOMY = {
 class OrganStatistics:
     """
     Container for organ-specific statistical measurements.
-    
+
     Attributes:
         volume_mm3: Volume in cubic millimeters
         surface_area_mm2: Surface area in square millimeters
@@ -126,6 +125,7 @@ class OrganStatistics:
         mean_intensity: Mean intensity value (if image provided)
         std_intensity: Standard deviation of intensity (if image provided)
     """
+
     volume_mm3: float
     surface_area_mm2: float
     sphericity: float
@@ -139,18 +139,18 @@ class OrganStatistics:
 class OrganFilter:
     """
     Advanced filtering pipeline for automated segmentation quality control.
-    
+
     This class implements the Specialized Organ Label Filter (SOLF) algorithm
     for identifying and correcting errors in automated segmentation masks.
     It uses anatomical priors and statistical analysis to ensure high-quality
     training data for the foundation model.
-    
+
     Attributes:
         confidence_threshold: Minimum confidence score for accepting labels
         volume_outlier_factor: Factor for volume-based outlier detection
         min_volume_mm3: Minimum organ volume to be considered valid
         max_components: Maximum allowed connected components per organ
-        
+
     Example:
         >>> filter = OrganFilter(confidence_threshold=0.8)
         >>> filtered_mask = filter.process_segmentation(
@@ -158,17 +158,17 @@ class OrganFilter:
         ...     image_path="image.nii.gz"
         ... )
     """
-    
+
     def __init__(
         self,
         confidence_threshold: float = 0.8,
         volume_outlier_factor: float = 3.0,
         min_volume_mm3: float = 100.0,
-        max_components: int = 3
+        max_components: int = 3,
     ):
         """
         Initialize the organ filter with quality control parameters.
-        
+
         Args:
             confidence_threshold: Minimum confidence for accepting organ labels
             volume_outlier_factor: Standard deviations for outlier detection
@@ -179,56 +179,58 @@ class OrganFilter:
         self.volume_outlier_factor = volume_outlier_factor
         self.min_volume_mm3 = min_volume_mm3
         self.max_components = max_components
-        
+
         # Load anatomical priors (organ volume ranges in mm³)
         self.anatomical_priors = self._load_anatomical_priors()
-    
+
     def _load_anatomical_priors(self) -> Dict[int, Tuple[float, float]]:
         """
         Load expected volume ranges for each organ based on anatomical knowledge.
-        
+
         Returns:
             Dict mapping organ IDs to (min_volume, max_volume) tuples in mm³
         """
         priors = {
-            1: (100000, 300000),    # spleen: 100-300 cm³
-            2: (80000, 200000),     # kidney_right: 80-200 cm³
-            3: (80000, 200000),     # kidney_left: 80-200 cm³
-            4: (15000, 60000),      # gallbladder: 15-60 cm³
+            1: (100000, 300000),  # spleen: 100-300 cm³
+            2: (80000, 200000),  # kidney_right: 80-200 cm³
+            3: (80000, 200000),  # kidney_left: 80-200 cm³
+            4: (15000, 60000),  # gallbladder: 15-60 cm³
             5: (1000000, 2500000),  # liver: 1000-2500 cm³
-            6: (100000, 500000),    # stomach: 100-500 cm³
-            7: (60000, 150000),     # pancreas: 60-150 cm³
-            8: (3000, 10000),       # adrenal_gland_right: 3-10 cm³
-            9: (3000, 10000),       # adrenal_gland_left: 3-10 cm³
+            6: (100000, 500000),  # stomach: 100-500 cm³
+            7: (60000, 150000),  # pancreas: 60-150 cm³
+            8: (3000, 10000),  # adrenal_gland_right: 3-10 cm³
+            9: (3000, 10000),  # adrenal_gland_left: 3-10 cm³
             # ... additional organs with their expected ranges
-            24: (200000, 400000),   # heart: 200-400 cm³
-            21: (100000, 600000),   # urinary_bladder: 100-600 cm³ (variable)
-            52: (20000, 50000),     # spinal_cord: 20-50 cm³
+            24: (200000, 400000),  # heart: 200-400 cm³
+            21: (100000, 600000),  # urinary_bladder: 100-600 cm³ (variable)
+            52: (20000, 50000),  # spinal_cord: 20-50 cm³
         }
-        
+
         # Default range for organs without specific priors
         default_range = (1000, 10000000)  # 1 cm³ to 10 L
-        
+
         for organ_id in range(73):
             if organ_id not in priors and organ_id != 0:  # Exclude background
                 priors[organ_id] = default_range
-        
+
         return priors
-    
-    def compute_surface_area(self, mask: np.ndarray, spacing: Tuple[float, float, float]) -> float:
+
+    def compute_surface_area(
+        self, mask: np.ndarray, spacing: Tuple[float, float, float]
+    ) -> float:
         """
         Compute the surface area of a 3D binary mask using marching cubes.
-        
+
         This method uses the marching cubes algorithm to generate a mesh
         representation of the organ surface and calculates its area.
-        
+
         Args:
             mask: 3D binary mask array
             spacing: Voxel spacing in mm (x, y, z)
-            
+
         Returns:
             float: Surface area in mm²
-            
+
         Example:
             >>> area = filter.compute_surface_area(
             ...     mask=organ_mask,
@@ -238,62 +240,58 @@ class OrganFilter:
         # Apply marching cubes to get surface mesh
         try:
             verts, faces, _, _ = measure.marching_cubes(
-                mask.astype(float),
-                level=0.5,
-                spacing=spacing
+                mask.astype(float), level=0.5, spacing=spacing
             )
-            
+
             # Calculate surface area from mesh
             surface_area = measure.mesh_surface_area(verts, faces)
-            
+
             return surface_area
         except Exception as e:
             warnings.warn(f"Surface area computation failed: {e}")
             return 0.0
-    
+
     def compute_sphericity(self, volume: float, surface_area: float) -> float:
         """
         Calculate sphericity as a measure of organ shape regularity.
-        
+
         Sphericity is a dimensionless measure that indicates how closely
         an object resembles a sphere. Perfect sphere has sphericity of 1.
-        
+
         Args:
             volume: Organ volume in mm³
             surface_area: Organ surface area in mm²
-            
+
         Returns:
             float: Sphericity value between 0 and 1
-            
+
         Notes:
             Sphericity = (π^(1/3) * (6*V)^(2/3)) / A
             where V is volume and A is surface area
         """
         if surface_area == 0:
             return 0.0
-        
+
         # Calculate sphericity using the formula
-        sphericity = (np.pi**(1/3) * (6 * volume)**(2/3)) / surface_area
-        
+        sphericity = (np.pi ** (1 / 3) * (6 * volume) ** (2 / 3)) / surface_area
+
         # Clamp to [0, 1] range (numerical errors can cause slight violations)
         return np.clip(sphericity, 0.0, 1.0)
-    
+
     def analyze_connected_components(
-        self,
-        mask: np.ndarray,
-        organ_id: int
+        self, mask: np.ndarray, organ_id: int
     ) -> Tuple[np.ndarray, int]:
         """
         Analyze and filter connected components for an organ.
-        
+
         This method identifies separate connected regions in the mask and
         filters out small spurious components that likely represent noise
         or segmentation errors.
-        
+
         Args:
             mask: Binary mask for a single organ
             organ_id: Organ identifier for applying specific rules
-            
+
         Returns:
             Tuple containing:
                 - Filtered mask with small components removed
@@ -301,113 +299,118 @@ class OrganFilter:
         """
         # Label connected components
         labeled_mask, n_components = ndimage.label(mask)
-        
+
         if n_components == 0:
             return mask, 0
-        
+
         # Calculate component volumes
         component_sizes = []
         for i in range(1, n_components + 1):
             component_size = np.sum(labeled_mask == i)
             component_sizes.append(component_size)
-        
+
         # Sort components by size
         sorted_indices = np.argsort(component_sizes)[::-1]
-        
+
         # Keep only significant components
         filtered_mask = np.zeros_like(mask)
         kept_components = 0
-        
-        for idx in sorted_indices[:self.max_components]:
+
+        for idx in sorted_indices[: self.max_components]:
             component_id = idx + 1
             component_size = component_sizes[idx]
-            
+
             # Keep component if it's large enough (>1% of largest component)
             if component_size > 0.01 * component_sizes[sorted_indices[0]]:
                 filtered_mask[labeled_mask == component_id] = 1
                 kept_components += 1
-        
+
         return filtered_mask, kept_components
-    
+
     def validate_anatomical_plausibility(
-        self,
-        organ_stats: Dict[int, OrganStatistics]
+        self, organ_stats: Dict[int, OrganStatistics]
     ) -> Dict[int, bool]:
         """
         Validate anatomical plausibility of organ segmentations.
-        
+
         This method checks whether organ measurements fall within expected
         anatomical ranges and maintains proper spatial relationships.
-        
+
         Args:
             organ_stats: Dictionary mapping organ IDs to their statistics
-            
+
         Returns:
             Dict mapping organ IDs to validation status (True if valid)
         """
         validation_results = {}
-        
+
         for organ_id, stats in organ_stats.items():
             if organ_id == 0:  # Skip background
                 continue
-            
+
             is_valid = True
             reasons = []
-            
+
             # Check volume against anatomical priors
             if organ_id in self.anatomical_priors:
                 min_vol, max_vol = self.anatomical_priors[organ_id]
                 if not (min_vol <= stats.volume_mm3 <= max_vol):
                     is_valid = False
-                    reasons.append(f"Volume {stats.volume_mm3:.0f} outside range "
-                                 f"[{min_vol:.0f}, {max_vol:.0f}]")
-            
+                    reasons.append(
+                        f"Volume {stats.volume_mm3:.0f} outside range "
+                        f"[{min_vol:.0f}, {max_vol:.0f}]"
+                    )
+
             # Check minimum volume threshold
             if stats.volume_mm3 < self.min_volume_mm3:
                 is_valid = False
-                reasons.append(f"Volume {stats.volume_mm3:.0f} below minimum "
-                             f"{self.min_volume_mm3:.0f}")
-            
+                reasons.append(
+                    f"Volume {stats.volume_mm3:.0f} below minimum "
+                    f"{self.min_volume_mm3:.0f}"
+                )
+
             # Check sphericity for certain organs
             sphericity_organs = [1, 2, 3, 8, 9]  # Kidneys, spleen, adrenals
             if organ_id in sphericity_organs and stats.sphericity < 0.3:
                 is_valid = False
                 reasons.append(f"Sphericity {stats.sphericity:.2f} too low")
-            
+
             # Check number of components
             if stats.n_components > self.max_components:
                 is_valid = False
                 reasons.append(f"Too many components: {stats.n_components}")
-            
+
             validation_results[organ_id] = is_valid
-            
+
             if not is_valid:
-                organ_name = ORGAN_TAXONOMY["labels"].get(str(organ_id), f"organ_{organ_id}")
+                organ_name = ORGAN_TAXONOMY["labels"].get(
+                    str(organ_id), f"organ_{organ_id}"
+                )
                 print(f"Validation failed for {organ_name}: {', '.join(reasons)}")
-        
+
         return validation_results
-    
+
     def process_segmentation(
         self,
         mask_path: str,
         image_path: Optional[str] = None,
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
     ) -> np.ndarray:
         """
         Process and filter a complete segmentation mask.
-        
+
         This is the main entry point for the SOLF pipeline. It loads a
         segmentation mask, applies all filtering and validation steps,
         and returns a refined mask with improved quality.
-        
+
         Args:
             mask_path: Path to input segmentation mask
             image_path: Optional path to corresponding image for intensity analysis
             output_path: Optional path to save filtered mask
-            
+
         Returns:
             np.ndarray: Filtered segmentation mask
-            
+
         Example:
             >>> filtered = filter.process_segmentation(
             ...     mask_path="raw_segmentation.nii.gz",
@@ -415,46 +418,46 @@ class OrganFilter:
             ... )
         """
         print(f"Processing segmentation: {mask_path}")
-        
+
         # Load mask
         mask_nii = nib.load(mask_path)
         mask_data = mask_nii.get_fdata().astype(np.uint8)
         spacing = mask_nii.header.get_zooms()[:3]
-        
+
         # Load image if provided
         image_data = None
         if image_path:
             image_nii = nib.load(image_path)
             image_data = image_nii.get_fdata()
-        
+
         # Initialize filtered mask
         filtered_mask = np.zeros_like(mask_data)
-        
+
         # Get unique organ IDs
         organ_ids = np.unique(mask_data)
         organ_ids = organ_ids[organ_ids != 0]  # Exclude background
-        
+
         # Compute statistics for each organ
         organ_stats = {}
-        
+
         for organ_id in organ_ids:
             # Extract organ mask
             organ_mask = (mask_data == organ_id).astype(np.uint8)
-            
+
             # Filter connected components
             organ_mask, n_components = self.analyze_connected_components(
                 organ_mask, organ_id
             )
-            
+
             # Skip if no valid components
             if n_components == 0:
                 continue
-            
+
             # Compute statistics
             volume_mm3 = np.sum(organ_mask) * np.prod(spacing)
             surface_area = self.compute_surface_area(organ_mask, spacing)
             sphericity = self.compute_sphericity(volume_mm3, surface_area)
-            
+
             # Get centroid and bounding box
             coords = np.argwhere(organ_mask)
             if len(coords) > 0:
@@ -465,7 +468,7 @@ class OrganFilter:
             else:
                 centroid = (0, 0, 0)
                 bbox = (0, 0, 0, 0, 0, 0)
-            
+
             # Compute intensity statistics if image provided
             mean_intensity = None
             std_intensity = None
@@ -474,7 +477,7 @@ class OrganFilter:
                 if len(organ_intensities) > 0:
                     mean_intensity = organ_intensities.mean()
                     std_intensity = organ_intensities.std()
-            
+
             # Store statistics
             organ_stats[organ_id] = OrganStatistics(
                 volume_mm3=volume_mm3,
@@ -484,35 +487,33 @@ class OrganFilter:
                 centroid=centroid,
                 bbox=bbox,
                 mean_intensity=mean_intensity,
-                std_intensity=std_intensity
+                std_intensity=std_intensity,
             )
-            
+
             # Add to filtered mask if valid
             filtered_mask[organ_mask == 1] = organ_id
-        
+
         # Validate anatomical plausibility
         validation_results = self.validate_anatomical_plausibility(organ_stats)
-        
+
         # Remove invalid organs from filtered mask
         for organ_id, is_valid in validation_results.items():
             if not is_valid:
                 filtered_mask[filtered_mask == organ_id] = 0
-        
+
         # Save filtered mask if output path provided
         if output_path:
             filtered_nii = nib.Nifti1Image(
-                filtered_mask.astype(np.uint8),
-                mask_nii.affine,
-                mask_nii.header
+                filtered_mask.astype(np.uint8), mask_nii.affine, mask_nii.header
             )
             nib.save(filtered_nii, output_path)
             print(f"Saved filtered mask to: {output_path}")
-        
+
         # Report filtering results
         n_original = len(organ_ids)
         n_filtered = len([v for v in validation_results.values() if v])
         print(f"Filtering complete: {n_filtered}/{n_original} organs retained")
-        
+
         return filtered_mask
 
 
@@ -521,24 +522,24 @@ def batch_process_segmentations(
     output_dir: str,
     image_dir: Optional[str] = None,
     confidence_threshold: float = 0.8,
-    n_jobs: int = 1
+    n_jobs: int = 1,
 ) -> pd.DataFrame:
     """
     Process multiple segmentation masks in batch with parallel processing.
-    
+
     This function applies the SOLF pipeline to all segmentation masks in a
     directory, optionally using parallel processing for efficiency.
-    
+
     Args:
         input_dir: Directory containing input segmentation masks
         output_dir: Directory to save filtered masks
         image_dir: Optional directory containing corresponding images
         confidence_threshold: Minimum confidence for organ filtering
         n_jobs: Number of parallel jobs (-1 for all CPUs)
-        
+
     Returns:
         DataFrame: Summary statistics for all processed masks
-        
+
     Example:
         >>> results = batch_process_segmentations(
         ...     input_dir="./raw_masks/",
@@ -549,21 +550,21 @@ def batch_process_segmentations(
     """
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Find all segmentation masks
     mask_paths = sorted(glob.glob(os.path.join(input_dir, "*.nii.gz")))
     print(f"Found {len(mask_paths)} segmentation masks to process")
-    
+
     # Initialize filter
     organ_filter = OrganFilter(confidence_threshold=confidence_threshold)
-    
+
     # Process each mask
     results = []
-    
+
     for mask_path in mask_paths:
         mask_name = os.path.basename(mask_path)
         output_path = os.path.join(output_dir, mask_name)
-        
+
         # Find corresponding image if available
         image_path = None
         if image_dir:
@@ -571,82 +572,90 @@ def batch_process_segmentations(
             image_path = os.path.join(image_dir, image_name)
             if not os.path.exists(image_path):
                 image_path = None
-        
+
         # Process segmentation
         try:
             filtered_mask = organ_filter.process_segmentation(
-                mask_path=mask_path,
-                image_path=image_path,
-                output_path=output_path
+                mask_path=mask_path, image_path=image_path, output_path=output_path
             )
-            
+
             # Collect statistics
             n_organs_original = len(np.unique(nib.load(mask_path).get_fdata())) - 1
             n_organs_filtered = len(np.unique(filtered_mask)) - 1
-            
-            results.append({
-                "file": mask_name,
-                "organs_original": n_organs_original,
-                "organs_filtered": n_organs_filtered,
-                "retention_rate": n_organs_filtered / max(n_organs_original, 1),
-                "status": "success"
-            })
-            
+
+            results.append(
+                {
+                    "file": mask_name,
+                    "organs_original": n_organs_original,
+                    "organs_filtered": n_organs_filtered,
+                    "retention_rate": n_organs_filtered / max(n_organs_original, 1),
+                    "status": "success",
+                }
+            )
+
         except Exception as e:
             print(f"Error processing {mask_name}: {e}")
-            results.append({
-                "file": mask_name,
-                "organs_original": 0,
-                "organs_filtered": 0,
-                "retention_rate": 0,
-                "status": f"error: {str(e)}"
-            })
-    
+            results.append(
+                {
+                    "file": mask_name,
+                    "organs_original": 0,
+                    "organs_filtered": 0,
+                    "retention_rate": 0,
+                    "status": f"error: {str(e)}",
+                }
+            )
+
     # Create summary DataFrame
     df_results = pd.DataFrame(results)
-    
+
     # Print summary statistics
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("BATCH PROCESSING SUMMARY")
-    print("="*60)
+    print("=" * 60)
     print(f"Total files processed: {len(df_results)}")
     print(f"Successful: {(df_results['status'] == 'success').sum()}")
     print(f"Failed: {(df_results['status'] != 'success').sum()}")
     print(f"Average retention rate: {df_results['retention_rate'].mean():.2%}")
     print(f"Total organs original: {df_results['organs_original'].sum()}")
     print(f"Total organs filtered: {df_results['organs_filtered'].sum()}")
-    
+
     return df_results
 
 
 if __name__ == "__main__":
     """
     Command-line interface for the SOLF pipeline.
-    
+
     Usage:
         python organ_filtering.py --input_dir ./raw_masks/ --output_dir ./filtered_masks/
     """
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="SOLF: Specialized Organ Label Filter for UKBOB dataset"
     )
     parser.add_argument("--input_dir", required=True, help="Input directory with masks")
-    parser.add_argument("--output_dir", required=True, help="Output directory for filtered masks")
-    parser.add_argument("--image_dir", help="Optional directory with corresponding images")
-    parser.add_argument("--confidence", type=float, default=0.8, help="Confidence threshold")
+    parser.add_argument(
+        "--output_dir", required=True, help="Output directory for filtered masks"
+    )
+    parser.add_argument(
+        "--image_dir", help="Optional directory with corresponding images"
+    )
+    parser.add_argument(
+        "--confidence", type=float, default=0.8, help="Confidence threshold"
+    )
     parser.add_argument("--report", help="Path to save filtering report CSV")
-    
+
     args = parser.parse_args()
-    
+
     # Run batch processing
     results_df = batch_process_segmentations(
         input_dir=args.input_dir,
         output_dir=args.output_dir,
         image_dir=args.image_dir,
-        confidence_threshold=args.confidence
+        confidence_threshold=args.confidence,
     )
-    
+
     # Save report if requested
     if args.report:
         results_df.to_csv(args.report, index=False)

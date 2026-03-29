@@ -40,14 +40,21 @@ class AverageMeter(object):
 
 
 def distributed_all_gather(
-    tensor_list, valid_batch_size=None, out_numpy=False, world_size=None, no_barrier=False, is_valid=None
+    tensor_list,
+    valid_batch_size=None,
+    out_numpy=False,
+    world_size=None,
+    no_barrier=False,
+    is_valid=None,
 ):
     if world_size is None:
         world_size = torch.distributed.get_world_size()
     if valid_batch_size is not None:
         valid_batch_size = min(valid_batch_size, world_size)
     elif is_valid is not None:
-        is_valid = torch.tensor(bool(is_valid), dtype=torch.bool, device=tensor_list[0].device)
+        is_valid = torch.tensor(
+            bool(is_valid), dtype=torch.bool, device=tensor_list[0].device
+        )
     if not no_barrier:
         torch.distributed.barrier()
     tensor_list_out = []

@@ -1,0 +1,15 @@
+[flake8]
+max-line-length = 120
+exclude = assets,data
+ignore =
+    E203,
+    E402,
+    E501,
+    E722,
+    F401,
+    F811,
+    F821,
+    F841,
+    W291,
+    W293,
+    W503
